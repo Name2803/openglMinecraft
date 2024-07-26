@@ -1,6 +1,7 @@
 #include "Chunks.h"
 #include "Chunk.h"
 #include "voxel.h"
+#include "../lighting/Lightmap.h"
 
 #include <glm/glm.hpp>
 
@@ -167,4 +168,54 @@ voxel* Chunks::rayCast(vec3 a, vec3 dir, float maxDist, vec3& end, vec3& norm, v
 	end.z = pz + t * dz;
 	norm.x = norm.y = norm.z = 0.0f;
 	return nullptr;
+}
+
+
+void Chunks::write(unsigned char* dest) {
+	size_t index = 0;
+	for (size_t i = 0; i < volume; i++) {
+		Chunk* chunk = chunks[i];
+		for (size_t j = 0; j < CHUNK_VOL; j++, index++) {
+			dest[index] = chunk->voxels[j].id;
+		}
+	}
+}
+
+void Chunks::read(unsigned char* source) {
+	size_t index = 0;
+	for (size_t i = 0; i < volume; i++) {
+		Chunk* chunk = chunks[i];
+		for (size_t j = 0; j < CHUNK_VOL; j++, index++) {
+			chunk->voxels[j].id = source[index];
+		}
+		chunk->modified = true;
+	}
+}
+
+unsigned char Chunks::getLight(int x, int y, int z, int channel) {
+	int cx = x / CHUNK_W;
+	int cy = y / CHUNK_H;
+	int cz = z / CHUNK_D;
+	if (x < 0) cx--;
+	if (y < 0) cy--;
+	if (z < 0) cz--;
+	if (cx < 0 || cy < 0 || cz < 0 || cx >= w || cy >= h || cz >= d)
+		return 0;
+	Chunk* chunk = chunks[(cy * d + cz) * w + cx];
+	int lx = x - cx * CHUNK_W;
+	int ly = y - cy * CHUNK_H;
+	int lz = z - cz * CHUNK_D;
+	return chunk->lightmap->get(lx, ly, lz, channel);
+}
+
+Chunk* Chunks::getChunkByVoxel(int x, int y, int z) {
+	int cx = x / CHUNK_W;
+	int cy = y / CHUNK_H;
+	int cz = z / CHUNK_D;
+	if (x < 0) cx--;
+	if (y < 0) cy--;
+	if (z < 0) cz--;
+	if (cx < 0 || cy < 0 || cz < 0 || cx >= w || cy >= h || cz >= d)
+		return nullptr;
+	return chunks[(cy * d + cz) * w + cx];
 }

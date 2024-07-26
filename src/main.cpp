@@ -20,6 +20,11 @@
 
 #include "graphics/LineBatch.h"
 
+#include "files/files.h"
+
+#include "lighting/Lightmap.h"
+#include "lighting/LightSolver.h"
+
 
 float vertices[] = {
     // x    y 
@@ -123,7 +128,7 @@ int main(void)
             oz += 1;
             closes[(oy * 3 + oz) * 3 + ox] = other;
         }
-        Mesh* mesh = renderer.render(chunk, (const Chunk**)closes, true);
+        Mesh* mesh = renderer.render(chunk, (const Chunk**)closes);
         chunksMesh[i] = mesh;
     }
 
@@ -148,6 +153,64 @@ int main(void)
 
     int attrss [] = { 3, 0 };
 
+    int choosenBlock = 1;
+
+    LightSolver* solverR = new LightSolver(&chunks, 0);
+    LightSolver* solverG = new LightSolver(&chunks, 1);
+    LightSolver* solverB = new LightSolver(&chunks, 2);
+    LightSolver* solverS = new LightSolver(&chunks, 3);
+
+    for (int y = 0; y < chunks.h * CHUNK_H; y++) {
+        for (int z = 0; z < chunks.d * CHUNK_D; z++) {
+            for (int x = 0; x < chunks.w * CHUNK_W; x++) {
+                voxel* vox = chunks.get(x, y, z);
+                if (vox->id == 13) {
+                    solverR->add(x, y, z, 15);
+                    solverG->add(x, y, z, 15);
+                    solverB->add(x, y, z, 15);
+                }
+            }
+        }
+    }
+
+    for (int z = 0; z < chunks.d * CHUNK_D; z++) {
+        for (int x = 0; x < chunks.w * CHUNK_W; x++) {
+            for (int y = chunks.h * CHUNK_H - 1; y >= 0; y--) {
+                voxel* vox = chunks.get(x, y, z);
+                if (vox->id != 0) {
+                    break;
+                }
+                chunks.getChunkByVoxel(x, y, z)->lightmap->setS(x % CHUNK_W, y % CHUNK_H, z % CHUNK_D, 0xF);
+            }
+        }
+    }
+
+    for (int z = 0; z < chunks.d * CHUNK_D; z++) {
+        for (int x = 0; x < chunks.w * CHUNK_W; x++) {
+            for (int y = chunks.h * CHUNK_H - 1; y >= 0; y--) {
+                voxel* vox = chunks.get(x, y, z);
+                if (vox->id != 0) {
+                    break;
+                }
+                if (
+                    chunks.getLight(x - 1, y, z, 3) == 0 ||
+                    chunks.getLight(x + 1, y, z, 3) == 0 ||
+                    chunks.getLight(x, y - 1, z, 3) == 0 ||
+                    chunks.getLight(x, y + 1, z, 3) == 0 ||
+                    chunks.getLight(x, y, z - 1, 3) == 0 ||
+                    chunks.getLight(x, y, z + 1, 3) == 0
+                    ) {
+                    solverS->add(x, y, z);
+                }
+                chunks.getChunkByVoxel(x, y, z)->lightmap->setS(x % CHUNK_W, y % CHUNK_H, z % CHUNK_D, 0xF);
+            }
+        }
+    }
+
+    solverR->solve();
+    solverG->solve();
+    solverB->solve();
+    solverS->solve();
 
     /* Mian Game loop */
     while (!Window::isShouldClose())
@@ -184,6 +247,21 @@ int main(void)
             camera->position += speed * deltaTime * camera->right;
         }
         
+        if (Events::jpressed(GLFW_KEY_F1)) {
+            unsigned char* buffer = new unsigned char[chunks.volume * CHUNK_VOL];
+            chunks.write(buffer);
+            write_binary_file("world.bin", (const char*)buffer, chunks.volume * CHUNK_VOL);
+            delete[] buffer;
+            std::cout << "world saved in " << (chunks.volume * CHUNK_VOL) << " bytes" << std::endl;
+        }
+        if (Events::jpressed(GLFW_KEY_F2)) {
+            unsigned char* buffer = new unsigned char[chunks.volume * CHUNK_VOL];
+            read_binary_file("world.bin", (char*)buffer, chunks.volume * CHUNK_VOL);
+            chunks.read(buffer);
+            delete[] buffer;
+        }
+
+
         if (Events::jpressed(GLFW_KEY_G)) {
             shouldToDraw = !shouldToDraw;
         }
@@ -207,9 +285,7 @@ int main(void)
             Events::toogleCursor();
         }
 
-        /*if (Events::jpressed(GLFW_KEY_T)) {*/
-            
-        /*}*/
+       
 
 
         if (Events::_cursor_locked) {
@@ -237,10 +313,66 @@ int main(void)
                 voxel_box->box(iend.x + 0.5f, iend.y + 0.5f, iend.z + 0.5f, 1.005f, 1.005f, 1.005f, 0, 0, 0, 0.5f);
 
                 if (Events::jclicked(GLFW_MOUSE_BUTTON_1)) {
-                    chunks.set((int)iend.x, (int)iend.y, (int)iend.z, 0);
+                    int x = (int)iend.x;
+                    int y = (int)iend.y;
+                    int z = (int)iend.z;
+                    chunks.set(x, y, z, 0);
+
+                    solverR->remove(x, y, z);
+                    solverG->remove(x, y, z);
+                    solverB->remove(x, y, z);
+
+                    solverR->solve();
+                    solverG->solve();
+                    solverB->solve();
+
+                    if (chunks.getLight(x, y + 1, z, 3) == 0xF) {
+                        for (int i = y; i >= 0; i--) {
+                            if (chunks.get(x, i, z)->id != 0)
+                                break;
+                            solverS->add(x, i, z, 0xF);
+                        }
+                    }
+
+                    solverR->add(x, y + 1, z); solverG->add(x, y + 1, z); solverB->add(x, y + 1, z); solverS->add(x, y + 1, z);
+                    solverR->add(x, y - 1, z); solverG->add(x, y - 1, z); solverB->add(x, y - 1, z); solverS->add(x, y - 1, z);
+                    solverR->add(x + 1, y, z); solverG->add(x + 1, y, z); solverB->add(x + 1, y, z); solverS->add(x + 1, y, z);
+                    solverR->add(x - 1, y, z); solverG->add(x - 1, y, z); solverB->add(x - 1, y, z); solverS->add(x - 1, y, z);
+                    solverR->add(x, y, z + 1); solverG->add(x, y, z + 1); solverB->add(x, y, z + 1); solverS->add(x, y, z + 1);
+                    solverR->add(x, y, z - 1); solverG->add(x, y, z - 1); solverB->add(x, y, z - 1); solverS->add(x, y, z - 1);
+
+                    solverR->solve();
+                    solverG->solve();
+                    solverB->solve();
+                    solverS->solve();
                 }
                 if (Events::jclicked(GLFW_MOUSE_BUTTON_2)) {
-                    chunks.set((int)(iend.x) + (int)(norm.x), (int)(iend.y) + (int)(norm.y), (int)(iend.z) + (int)(norm.z), temp);
+                    int x = (int)(iend.x) + (int)(norm.x);
+                    int y = (int)(iend.y) + (int)(norm.y);
+                    int z = (int)(iend.z) + (int)(norm.z);
+                    chunks.set(x, y, z, temp);
+                    solverR->remove(x, y, z);
+                    solverG->remove(x, y, z);
+                    solverB->remove(x, y, z);
+                    solverS->remove(x, y, z);
+                    for (int i = y - 1; i >= 0; i--) {
+                        solverS->remove(x, i, z);
+                        if (i == 0 || chunks.get(x, i - 1, z)->id != 0) {
+                            break;
+                        }
+                    }
+                    solverR->solve();
+                    solverG->solve();
+                    solverB->solve();
+                    solverS->solve();
+                    if (temp == 13) {
+                        solverR->add(x, y, z, 10);
+                        solverG->add(x, y, z, 10);
+                        solverB->add(x, y, z, 0);
+                        solverR->solve();
+                        solverG->solve();
+                        solverB->solve();
+                    }
                 }
             }
         }
@@ -274,7 +406,7 @@ int main(void)
                 oz += 1;
                 closes[(oy * 3 + oz) * 3 + ox] = other;
             }
-            Mesh* mesh = renderer.render(chunk, (const Chunk**)closes, true);
+            Mesh* mesh = renderer.render(chunk, (const Chunk**)closes);
             chunksMesh[i] = mesh;
         }
 
@@ -315,7 +447,7 @@ int main(void)
 
         main_crosshair_shader.use();
         crosshairMesh.draw(GL_LINES);
-        std::cout << camera->front.x << "\t" << camera->front.y << "\t" << camera->front.z << "\n";
+        
        
 
         Window::swapBuffers();

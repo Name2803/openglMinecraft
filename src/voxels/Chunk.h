@@ -7,12 +7,14 @@
 
 class voxel;
 class Shader;
+class Lightmap;
 
 class Chunk {
 public:
 	int x, y, z;
 	bool modified = true;
 	voxel* voxels;
+    Lightmap* lightmap;
 	Chunk(int xposs, int ypos, int zpos);
 	~Chunk();
 

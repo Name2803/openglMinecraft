@@ -34,6 +34,14 @@ add_executable(${PROJECT_NAME}
 
 	src/graphics/LineBatch.h
 	src/graphics/LineBatch.cpp
+
+	src/files/files.h
+	src/files/files.cpp
+
+	src/lighting/Lightmap.h
+	src/lighting/Lightmap.cpp
+	src/lighting/LightSolver.h
+	src/lighting/LightSolver.cpp
 )
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)

@@ -2,6 +2,7 @@
 #include "voxel.h"
 #include "../graphics/Mesh.h"
 #include "../graphics/ShaderCl.h"
+#include "../lighting/Lightmap.h"
 
 #include <math.h>
 #include <random>
@@ -12,6 +13,7 @@ Chunk::Chunk(int xpos, int ypos, int zpos):
 	x(xpos), y(ypos), z(zpos)
 {
 	voxels = new voxel[CHUNK_VOL];
+	lightmap = new Lightmap();
 	for (int z = 0; z < CHUNK_D; z++) {
 		for (int x = 0; x < CHUNK_W; x++) {
 			for (int y = 0; y < CHUNK_H; y++) {
@@ -41,6 +43,7 @@ Chunk::Chunk(int xpos, int ypos, int zpos):
 
 Chunk::~Chunk() {
 	delete[] voxels;
+	delete lightmap;
 }
 
 int Chunk::ChunkBoxDrawer(bool shouldToDraw, Shader& chunkBoxShader)

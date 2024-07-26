@@ -18,4 +18,10 @@ public:
 	Chunk* getChunk(int x, int y, int z);
 	void set(int x, int y, int z, int id);
 	voxel* rayCast(glm::vec3 a, glm::vec3 dir, float maxDist, glm::vec3& end, glm::vec3& norm, glm::vec3& iend);
+
+	unsigned char getLight(int x, int y, int z, int channel);
+	Chunk* getChunkByVoxel(int x, int y, int z);
+
+	void write(unsigned char* dest);
+	void read(unsigned char* source);
 }; 
