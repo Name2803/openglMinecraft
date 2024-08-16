@@ -21,7 +21,7 @@ Chunk::Chunk(int xpos, int ypos, int zpos):
 				int real_z = z + zpos * CHUNK_D;
 				int real_y = y + ypos * CHUNK_H;
 				float height = glm::perlin(glm::vec3(real_x * 0.07f, real_z * 0.07f, real_y * 0.07f)) * 10 + 5;
-				int id = glm::perlin(glm::vec3(real_x * 0.0325f, real_y * 0.0325f, real_z * 0.0325f)) > 0.1f;
+				int id = glm::perlin(glm::vec3(real_x * 0.0325f, real_y * 0.0625f, real_z * 0.0325f)) > 0.1f;
 				
 				if (id)
 				{

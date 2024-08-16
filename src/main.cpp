@@ -84,7 +84,7 @@ int main(void)
     Events::initialize();
 
     Shader main_shader("../res/main_shader.vs", "../res/main_shader.fs");
-    Texture test_texture("../res/block_minecraft.png");
+    Texture test_texture("../res/texture_map.png");
 
     Shader main_line_shader("../res/main_line_shader.vs", "../res/main_line_shader.fs");
     
@@ -98,7 +98,7 @@ int main(void)
 
     Camera* camera = new Camera(glm::vec3(0., 5.f, 0.), radians(90.0f));
     VoxelRenderer renderer(1024 * 1024 * 8);
-    Chunks chunks(4, 4, 4);
+    Chunks chunks(4, 5, 4);
     Mesh** chunksMesh = new Mesh*[chunks.volume];
     for (int i = 0; i < chunks.volume; i++)
     {
